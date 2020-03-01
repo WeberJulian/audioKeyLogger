@@ -4,11 +4,10 @@ import pandas as pd
 import numpy as np
 
 delay = 85 #ms
-duration = 100 #ms
+duration = 75 #ms
 
-
-samplingFrequency, signalData = wavfile.read('dataset/output.wav')
-timestamps = list(pd.read_csv('dataset/timestamps.csv')['timestamp'])
+samplingFrequency, signalData = wavfile.read('raw/output.wav')
+timestamps = list(pd.read_csv('raw/timestamps.csv')['timestamp'])
 ms2steps = lambda ms: ms*1e-3*samplingFrequency
 
 plot.subplot(211)
