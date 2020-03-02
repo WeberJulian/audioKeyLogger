@@ -25,7 +25,7 @@ class AudioKeyLoggerDataset(Dataset):
             idx = idx.tolist()
         
         img_name = os.path.join(self.image_dir, self.timestamps.iloc[idx, 2])
-        image = io.imread(img_name)
+        image = io.imread(img_name, as_gray=True)
         key = self.timestamps.iloc[idx, 1]
         return { 'image': image, 'key': self.labels.get(key)}
 
