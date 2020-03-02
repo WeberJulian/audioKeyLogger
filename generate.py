@@ -20,9 +20,10 @@ def generateImage(row):
     ax.set_axis_off()
     fig.add_axes(ax)
     plt.specgram(sample,Fs=samplingFrequency,cmap='gray')
-    image_path = path+str(int(row['timestamp']))+'.png'
-    plt.savefig(image_path, dpi=20)
-    return image_path
+    image_name = str(int(row['timestamp']))+'.png'
+    plt.savefig(path+image_name, dpi=10)
+    return image_name
 
 data['timestamp'] = data.apply(lambda row: generateImage(row), axis=1)
 print(data.head(5))
+data.to_csv('dataset/timestamps.csv')
