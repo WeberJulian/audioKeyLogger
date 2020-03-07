@@ -3,8 +3,8 @@ from scipy.io import wavfile
 import pandas as pd
 import numpy as np
 
-delay = 85 #ms
-duration = 75 #ms
+delay = 110 #ms
+duration = 130 #ms
 
 samplingFrequency, signalData = wavfile.read('raw/output.wav')
 timestamps = list(pd.read_csv('raw/timestamps.csv')['timestamp'])

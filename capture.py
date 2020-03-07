@@ -5,7 +5,7 @@ import pandas as pd
 import sounddevice as sd
 from scipy.io.wavfile import write
 
-duration = 5
+duration = 60 * 5
 fs = 48000
 events = []
 

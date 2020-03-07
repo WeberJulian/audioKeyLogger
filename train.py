@@ -27,36 +27,43 @@ class AudioKeyLoggerDataset(Dataset):
         img_name = os.path.join(self.image_dir, self.timestamps.iloc[idx, 2])
         image = io.imread(img_name, as_gray=True)
         key = self.timestamps.iloc[idx, 1]
-        return { 'image': torch.tensor(image).unsqueeze(0), 'key': self.labels.get(key)}
+        return (torch.from_numpy(image).unsqueeze(0).float(), self.labels.get(key))
     
     def getNumKey(self):
         return len(self.classes)
 
+    def getKeyFromClass(self):
+        return None
+
 class ClassifierCNN(nn.Module):
-    def __init__(self, num_key):
+    def __init__(self, num_key, dropout=0.05):
         super(ClassifierCNN, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 16, 3, padding=1),
+            nn.Conv2d(1, 16, (5,3), padding=(2,1)),
             nn.LeakyReLU(),
             nn.BatchNorm2d(16),
+            nn.Dropout2d(dropout),
             nn.MaxPool2d(2)
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(16, 32, 3, padding=1),
             nn.LeakyReLU(),
             nn.BatchNorm2d(32),
+            nn.Dropout2d(dropout),
             nn.MaxPool2d(2)
         )
         self.conv3 = nn.Sequential(
             nn.Conv2d(32, 64, 3, padding=1),
             nn.LeakyReLU(),
             nn.BatchNorm2d(64),
+            nn.Dropout2d(dropout),
             nn.MaxPool2d(2)
         )
         self.dense1 = nn.Sequential(
             nn.Linear(64*16*16, 32*16*16),
             nn.LeakyReLU(),
-            nn.BatchNorm1d(8192)
+            nn.BatchNorm1d(8192),
+            nn.Dropout(dropout)
         )
         self.dense2 = nn.Sequential(
             nn.Linear(32*16*16, num_key)
@@ -66,24 +73,32 @@ class ClassifierCNN(nn.Module):
         x = self.conv1(image)
         x = self.conv2(x)
         x = self.conv3(x)
-        x = x.view(1,-1)
+        x = x.view(-1,self.num_flat_features(x))
         x = self.dense1(x)
         x = self.dense2(x)
         return x
 
+    def num_flat_features(self, x):
+        size = x.size()[1:]
+        num_features = 1
+        for s in size:
+            num_features *= s
+        return num_features
+
 dataset = AudioKeyLoggerDataset(os.path.join(path, 'timestamps.csv'), os.path.join(path, 'images'))
 
-lengths = [int(len(dataset)*0.8), len(dataset)-int(len(dataset)*0.8)]
+lengths = [int(len(dataset)*0.9), len(dataset)-int(len(dataset)*0.9)]
 train_set, test_set = torch.utils.data.random_split(dataset, lengths)
-testloader = torch.utils.data.DataLoader(train_set, batch_size=16, shuffle=True, num_workers=2)
-testloader = torch.utils.data.DataLoader(test_set, batch_size=16, shuffle=True, num_workers=2)
+trainloader = torch.utils.data.DataLoader(train_set, batch_size=16, shuffle=True, num_workers=0)
+testloader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
 model = ClassifierCNN(num_key=dataset.getNumKey())
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam()
+optimizer = torch.optim.Adam(params=model.parameters(), lr=5e-5)
 
-for epoch in range(5):  # loop over the dataset multiple times
+for epoch in range(10):  # loop over the dataset multiple times
+    print('epoch -- '+str(epoch))
 
     running_loss = 0.0
     for i, data in enumerate(trainloader, 0):
@@ -94,16 +109,26 @@ for epoch in range(5):  # loop over the dataset multiple times
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = net(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
+        if(inputs.size()[0] != 1):
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
 
         # print statistics
         running_loss += loss.item()
-        if i % 2000 == 1999:    # print every 2000 mini-batches
-            print('[%d, %5d] loss: %.3f' %
-                  (epoch + 1, i + 1, running_loss / 2000))
+        if i % 10 == 9:    # print every 2000 mini-batches
+            model.eval()
+            total = 0
+            correct = 0
+            for inputs, labels in testloader:
+                output = model.forward(inputs)
+                _, predicted = torch.max(output.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum() #sommation des éléments prédits.
+                test_accuracy = 100.00 * correct.numpy() / total
+            model.train()
+            print('[%d, %5d] loss: %.6f accuracy: %.3f' % (epoch + 1, i + 1, running_loss / 2000, test_accuracy))
             running_loss = 0.0
 
 print('Finished Training')
