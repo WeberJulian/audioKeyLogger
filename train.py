@@ -4,6 +4,7 @@ import pandas as pd
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
 from skimage import io, transform
+import matplotlib.pyplot as plt
 
 path = 'dataset/'
 
@@ -36,10 +37,11 @@ class AudioKeyLoggerDataset(Dataset):
         return None
 
 class ClassifierCNN(nn.Module):
-    def __init__(self, num_key, dropout=0.05):
+    def __init__(self, num_key, dropout=0.2):
         super(ClassifierCNN, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 16, (5,3), padding=(2,1)),
+            #nn.Conv2d(1, 16, (5,3), padding=(2,1)),
+            nn.Conv2d(1, 16, 3, padding=1),
             nn.LeakyReLU(),
             nn.BatchNorm2d(16),
             nn.Dropout2d(dropout),
@@ -59,6 +61,13 @@ class ClassifierCNN(nn.Module):
             nn.Dropout2d(dropout),
             nn.MaxPool2d(2)
         )
+        # self.conv4 = nn.Sequential(
+        #     nn.Conv2d(32, 64, 3, padding=1),
+        #     nn.LeakyReLU(),
+        #     nn.BatchNorm2d(64),
+        #     nn.Dropout2d(dropout),
+        #     nn.MaxPool2d(2)
+        # ) 
         self.dense1 = nn.Sequential(
             nn.Linear(64*16*16, 32*16*16),
             nn.LeakyReLU(),
@@ -87,48 +96,71 @@ class ClassifierCNN(nn.Module):
 
 dataset = AudioKeyLoggerDataset(os.path.join(path, 'timestamps.csv'), os.path.join(path, 'images'))
 
-lengths = [int(len(dataset)*0.9), len(dataset)-int(len(dataset)*0.9)]
-train_set, test_set = torch.utils.data.random_split(dataset, lengths)
+train_length = int(len(dataset)*0.8)
+validation_length = int(len(dataset)*0.1)
+testing_length = len(dataset) - (validation_length + train_length)
+
+lengths = [train_length, validation_length, testing_length]
+train_set, validation, test_set = torch.utils.data.random_split(dataset, lengths)
 trainloader = torch.utils.data.DataLoader(train_set, batch_size=16, shuffle=True, num_workers=0)
+validationloader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 testloader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
-model = ClassifierCNN(num_key=dataset.getNumKey())
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+model = ClassifierCNN(num_key=dataset.getNumKey(), dropout=0.2)
+model.to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(params=model.parameters(), lr=5e-5)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-4)
 
-for epoch in range(10):  # loop over the dataset multiple times
+acc_val = []
+acc_train = []
+train_loss = []
+
+for epoch in range(10):
     print('epoch -- '+str(epoch))
-
+    total = 0
+    correct = 0
     running_loss = 0.0
     for i, data in enumerate(trainloader, 0):
-        # get the inputs; data is a list of [inputs, labels]
-        inputs, labels = data
+        inputs, labels = data[0].to(device), data[1].to(device)
 
-        # zero the parameter gradients
         optimizer.zero_grad()
-
-        # forward + backward + optimize
         if(inputs.size()[0] != 1):
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
-        # print statistics
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted.cpu() == labels.cpu()).sum()
         running_loss += loss.item()
-        if i % 10 == 9:    # print every 2000 mini-batches
+        if i % 10 == 9:
+            acc_train.append(100.00 * correct.numpy() / total)
             model.eval()
             total = 0
             correct = 0
             for inputs, labels in testloader:
-                output = model.forward(inputs)
-                _, predicted = torch.max(output.data, 1)
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
-                correct += (predicted == labels).sum() #sommation des éléments prédits.
-                test_accuracy = 100.00 * correct.numpy() / total
-            model.train()
-            print('[%d, %5d] loss: %.6f accuracy: %.3f' % (epoch + 1, i + 1, running_loss / 2000, test_accuracy))
+                correct += (predicted.cpu() == labels.cpu()).sum()
+            validation_accuracy = 100.00 * correct.numpy() / total
+            acc_val.append(validation_accuracy)
+            print('%d loss: %.4f train_accuracy: %.3f val_accuracy: %.3f' % (i + 1, running_loss / 10, acc_train[-1], acc_val[-1]))
             running_loss = 0.0
+            total = 0
+            correct = 0
+            model.train()
 
 print('Finished Training')
+
+plt.title("Accuracy")
+plt.plot(acc_train, c='r', label='training')
+plt.plot(acc_val, c='b', label='testing')
+plt.legend()
+plt.grid(b=None, which='both', axis='y')
+plt.show()
