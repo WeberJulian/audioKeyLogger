@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 delay = 110 #ms
-duration = 130 #ms
+duration = 175 #ms
 path = 'dataset/images/'
 
 samplingFrequency, signalData = wavfile.read('raw/output.wav')
