@@ -17,13 +17,13 @@ testing_length = len(dataset) - (validation_length + train_length)
 lengths = [train_length, validation_length, testing_length]
 train_set, validation_set, test_set = torch.utils.data.random_split(dataset, lengths)
 trainloader = torch.utils.data.DataLoader(train_set, batch_size=16, shuffle=True, num_workers=0)
-validationloader = torch.utils.data.DataLoader(validation_set, batch_size=1, shuffle=True, num_workers=0)
+validationloader = torch.utils.data.DataLoader(validation_set, batch_size=16, shuffle=True, num_workers=0)
 testloader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def train():
-    model = ClassifierBaseCNN(num_key=dataset.getNumKey(), dropout=0.3)
+    model = ClassifierBaseCNN(num_key=dataset.getNumKey(), dropout=0.1)
     model.to(device)
 
     criterion = torch.nn.CrossEntropyLoss()
