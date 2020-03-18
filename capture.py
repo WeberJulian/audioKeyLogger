@@ -4,6 +4,7 @@ import time
 import pandas as pd 
 import sounddevice as sd
 from scipy.io.wavfile import write
+import uuid
 
 duration = 60 * 5
 fs = 48000
@@ -28,7 +29,8 @@ sd.wait()
 listener.stop()
 
 print("Writing output...")
+name = str(uuid.uuid1())
 data = pd.DataFrame(events)
 data["timestamp"] = data["timestamp"].apply(lambda a: (a - start)*1e-6)
-write('raw/output.wav', fs, sound)
-data.to_csv('raw/timestamps.csv')
+write(f'raw/{name}.wav', fs, sound)
+data.to_csv(f'raw/{name}.csv')

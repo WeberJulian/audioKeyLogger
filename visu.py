@@ -6,8 +6,10 @@ import numpy as np
 delay = 110 #ms
 duration = 130 #ms
 
-samplingFrequency, signalData = wavfile.read('raw/output.wav')
-timestamps = list(pd.read_csv('raw/timestamps.csv')['timestamp'])
+file_name = 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+
+samplingFrequency, signalData = wavfile.read(f'raw/audio/{file_name}.wav')
+timestamps = list(pd.read_csv(f'raw/labels/{file_name}.csv')['timestamp'])
 ms2steps = lambda ms: ms*1e-3*samplingFrequency
 
 plot.subplot(211)
