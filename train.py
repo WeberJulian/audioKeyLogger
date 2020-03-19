@@ -18,7 +18,7 @@ lengths = [train_length, validation_length, testing_length]
 train_set, validation_set, test_set = torch.utils.data.random_split(dataset, lengths)
 trainloader = torch.utils.data.DataLoader(train_set, batch_size=16, shuffle=True, num_workers=0)
 validationloader = torch.utils.data.DataLoader(validation_set, batch_size=16, shuffle=True, num_workers=0)
-testloader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
+# testloader = torch.utils.data.DataLoader(test_set, batch_size=1, shuffle=True, num_workers=0)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -73,20 +73,20 @@ def train():
                     correct += (predicted.cpu() == labels.cpu()).sum()
                 validation_accuracy = 100.00 * correct.numpy() / total
                 acc_val.append(validation_accuracy)
-                #print('%d loss: %.4f train_accuracy: %.3f val_accuracy: %.3f' % (i + 1, running_loss / 10, acc_train[-1], acc_val[-1]))
+                print('%d loss: %.4f train_accuracy: %.3f val_accuracy: %.3f' % (i + 1, running_loss / 10, acc_train[-1], acc_val[-1]))
                 running_loss = 0.0
                 total = 0
                 correct = 0
                 model.train()
 
         avg_epoch.append(sum(acc_val[-len_epoch:])/len_epoch)
-        #print('Average validation accurarcy: '+ str(avg_epoch[-1]))
+        print('Average validation accurarcy: '+ str(avg_epoch[-1]))
         if(epoch+1 > patience):
             if(avg_epoch[-1] - min(avg_epoch[-(patience+1):]) <= seuil):
                 learned = True
         epoch+=1
 
-    #print('Finished Training')
+    print('Finished Training')
     print('Maximum average accuracy: ' + str(max(avg_epoch)))
     return max(avg_epoch)
 
@@ -96,10 +96,11 @@ def benchmark(n):
         results.append(train())
         print(str(i) + 'eme moyenne: ' + str(sum(results)/len(results)))
 
-benchmark(10)
-# plt.title("Accuracy")
-# plt.plot(acc_train, c='r', label='training')
-# plt.plot(acc_val, c='b', label='testing')
-# plt.legend()
-# plt.grid(b=None, which='both', axis='y')
-# plt.show()
+# benchmark(10)
+train()
+plt.title("Accuracy")
+plt.plot(acc_train, c='r', label='training')
+plt.plot(acc_val, c='b', label='testing')
+plt.legend()
+plt.grid(b=None, which='both', axis='y')
+plt.show()
