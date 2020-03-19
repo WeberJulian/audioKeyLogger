@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 
 delay = 110 #ms
-duration = 130 #ms
+duration = 175 #ms
 
-file_name = 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+file_name = '10195770-6973-11ea-a3d7-acde48001122'
 
 samplingFrequency, signalData = wavfile.read(f'raw/audio/{file_name}.wav')
 timestamps = list(pd.read_csv(f'raw/labels/{file_name}.csv')['timestamp'])
